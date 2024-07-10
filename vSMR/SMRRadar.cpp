@@ -85,6 +85,18 @@ CSMRRadar::CSMRRadar()
 		}
 	};
 
+	Logger::info("Loading aircraft type data");
+
+	if (AircraftTypes == nullptr)
+		AircraftTypes = new CAircraftTypeLookup();
+
+	fs::path path = fs::path(DllPath) / fs::path("aircraft-data.csv");
+
+	if (fs::exists(path)) {
+		Logger::info("Found aircraft type data file!");
+		AircraftTypes->readFile(path.string());
+	}
+
 	Logger::info("Loading RIMCAS & Config");
 	// Creating the RIMCAS instance
 	if (RimcasInstance == nullptr)
@@ -1093,24 +1105,42 @@ void CSMRRadar::OnRadarTargetPositionUpdate(CRadarTarget RadarTarget)
 	float lenght = 38.0f;
 
 	if (fp.IsValid()) {
-		char wtc = fp.GetFlightPlanData().GetAircraftWtc();
+		const char* acType = fp.GetFlightPlanData().GetAircraftFPType();
+		char* shortACType = "";
 
-		if (wtc == 'L') {
-			width = 13.0f;
-			cabin_width = 2.0f;
-			lenght = 12.0f;
+		if (strlen(acType) >= 4) {
+			char truncated[5];
+			strncpy_s(truncated, acType, 4);
+			truncated[4] = '\0';
+			shortACType = truncated;
 		}
 
-		if (wtc == 'H') {
-			width = 61.0f;
-			cabin_width = 7.0f;
-			lenght = 64.0f;
+		CAircraftTypeLookup::AircraftData data = AircraftTypes->getAircraftData(shortACType);
+		if (data.length != -1) {  // primarily use recorded data values
+			width = data.wingspan / 3.281;
+			cabin_width = (data.gearWidth / 2) / 3.281;
+			lenght = data.length / 3.281;
 		}
+		else {  // use wtc instead
+			char wtc = fp.GetFlightPlanData().GetAircraftWtc();
 
-		if (wtc == 'J') {
-			width = 80.0f;
-			cabin_width = 7.0f;
-			lenght = 73.0f;
+			if (wtc == 'L') {
+				width = 13.0f;
+				cabin_width = 2.0f;
+				lenght = 12.0f;
+			}
+
+			if (wtc == 'H') {
+				width = 61.0f;
+				cabin_width = 7.0f;
+				lenght = 64.0f;
+			}
+
+			if (wtc == 'J') {
+				width = 80.0f;
+				cabin_width = 7.0f;
+				lenght = 73.0f;
+			}
 		}
 	}
 

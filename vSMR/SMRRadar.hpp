@@ -20,6 +20,7 @@
 #include "Logger.h"
 #include <filesystem>
 #include <iostream>
+#include "AircraftTypeLookup.hpp"
 
 using namespace std;
 using namespace Gdiplus;
@@ -82,6 +83,7 @@ public:
 	string DllPath;
 	string ConfigPath;
 	CCallsignLookup * Callsigns = nullptr;
+	CAircraftTypeLookup * AircraftTypes = nullptr;
 	CColorManager * ColorManager;
 
 	map<string, bool> ShowLists;
