@@ -315,6 +315,22 @@ public:
 		return float(fmod(originHead + float((rand() % 5) - 2), 360));
 	}
 
+	// IsPointInPolygon
+
+	inline virtual bool IsPointInPolygon(const CPosition& point, const std::vector<CPosition>& polygon) {
+		int n = polygon.size();
+		bool inside = false;
+
+		for (int i = 0, j = n - 1; i < n; j = i++) {
+			if (((polygon[i].m_Longitude > point.m_Longitude) != (polygon[j].m_Longitude > point.m_Longitude)) &&
+				(point.m_Latitude < (polygon[j].m_Latitude - polygon[i].m_Latitude) * (point.m_Longitude - polygon[i].m_Longitude) / (polygon[j].m_Longitude - polygon[i].m_Longitude) + polygon[i].m_Latitude)) {
+				inside = !inside;
+			}
+		}
+
+		return inside;
+	}
+
 	//---GetBottomLine---------------------------------------------
 
 	virtual string GetBottomLine(const char * Callsign);
