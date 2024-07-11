@@ -162,6 +162,18 @@ bool CConfig::isCustomRunwayAvail(string airport, string name1, string name2) {
 	return false;
 }
 
+bool CConfig::isGeofenceCorrelationAreaAvail(string airport) {
+	if (getActiveProfile().HasMember("maps")) {
+		if (getActiveProfile()["maps"].HasMember(airport.c_str())) {
+			if (getActiveProfile()["maps"][airport.c_str()].HasMember("georeference_correlation_areas")
+				&& getActiveProfile()["maps"][airport.c_str()]["georeference_correlation_areas"].IsArray()) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 vector<string> CConfig::getAllProfiles() {
 	vector<string> toR;
 	for (std::map<string, rapidjson::SizeType>::iterator it = profiles.begin(); it != profiles.end(); ++it)

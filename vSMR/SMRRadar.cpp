@@ -2075,6 +2075,31 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 		if (std::find(ReleasedTracks.begin(), ReleasedTracks.end(), rt.GetSystemID()) != ReleasedTracks.end())
 			isAcDisplayed = false;
 
+		if (CurrentConfig->isGeofenceCorrelationAreaAvail(getActiveAirport())) {
+			const Value& correlationAreas = CurrentConfig->getAirportMapIfAny(getActiveAirport())["georeference_correlation_areas"];
+			if (correlationAreas.IsArray()) {
+				for (int i = 0; i < correlationAreas.Size(); i++) {
+					std::vector<CPosition> polygon;
+					if (correlationAreas[i].IsArray()) {
+						for (int j = 0; j < correlationAreas[i].Size(); j++) {
+							const Value& pointArray = correlationAreas[i][j];
+							CPosition point;
+							int zero = 0;
+							point.LoadFromStrings(pointArray[1].GetString(), pointArray[zero].GetString());  // !!
+							polygon.push_back(point);
+						}
+					}
+
+					if (IsPointInPolygon(RtPos.GetPosition(), polygon)) {
+						isAcDisplayed = false;
+						break;
+					}
+				}
+			}
+		}
+
+		// 
+
 		if (!isAcDisplayed)
 			continue;
 
