@@ -1099,6 +1099,23 @@ void CSMRRadar::OnRadarTargetPositionUpdate(CRadarTarget RadarTarget)
 
 	CFlightPlan fp = GetPlugIn()->FlightPlanSelect(RadarTarget.GetCallsign());
 
+	if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {  // If on stand at Heathrow
+		int c = 0;
+		CPosition centre = RtPos.GetPosition();
+
+		for (int hdg = 0; hdg <= 360; hdg += 90) {
+			CPosition pos = Haversine(centre, hdg, 14.0f);
+			Patatoides[RadarTarget.GetCallsign()].points[c++] = { pos.m_Latitude, pos.m_Longitude };
+		}
+
+		for (int hdg = 0; hdg <= 360; hdg += 90) {
+			CPosition pos = Haversine(centre, hdg, 10.0f);
+			Patatoides[RadarTarget.GetCallsign()].points[c++] = { pos.m_Latitude, pos.m_Longitude };
+		}
+
+		return;
+	}
+
 	// All units in M
 	float width = 34.0f;
 	float cabin_width = 4.0f;
@@ -1949,10 +1966,6 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 
 
 		if (CurrentConfig->getActiveProfile()["targets"]["show_primary_target"].GetBool()) {
-
-			SolidBrush H_Brush(ColorManager->get_corrected_color("afterglow",
-				CurrentConfig->getConfigColor(CurrentConfig->getActiveProfile()["targets"]["target_color"])));
-
 			PointF lpPoints[100];
 			for (unsigned int i = 0; i < Patatoides[rt.GetCallsign()].points.size(); i++)
 			{
@@ -1963,7 +1976,17 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 				lpPoints[i] = { REAL(ConvertCoordFromPositionToPixel(pos).x), REAL(ConvertCoordFromPositionToPixel(pos).y) };
 			}
 
-			graphics.FillPolygon(&H_Brush, lpPoints, Patatoides[rt.GetCallsign()].points.size());
+			if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
+				SolidBrush H_Brush(ColorManager->get_corrected_color("afterglow", Gdiplus::Color::White));
+				graphics.FillPolygon(&H_Brush, lpPoints, Patatoides[rt.GetCallsign()].points.size());
+
+			}
+			else {
+				SolidBrush H_Brush(ColorManager->get_corrected_color("afterglow",
+					CurrentConfig->getConfigColor(CurrentConfig->getActiveProfile()["targets"]["target_color"])));
+
+				graphics.FillPolygon(&H_Brush, lpPoints, Patatoides[rt.GetCallsign()].points.size());
+			}
 		}
 		acPosPix = ConvertCoordFromPositionToPixel(RtPos.GetPosition());
 
@@ -1975,22 +1998,32 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 		CPen qTrailPen(PS_SOLID, 1, ColorManager->get_corrected_color("symbol", Gdiplus::Color::White).ToCOLORREF());
 		CPen* pqOrigPen = dc.SelectObject(&qTrailPen);
 
-		if (RtPos.GetTransponderC()) {
-			dc.MoveTo({ acPosPix.x, acPosPix.y - 6 });
-			dc.LineTo({ acPosPix.x - 6, acPosPix.y });
-			dc.LineTo({ acPosPix.x, acPosPix.y + 6 });
-			dc.LineTo({ acPosPix.x + 6, acPosPix.y });
-			dc.LineTo({ acPosPix.x, acPosPix.y - 6 });
-		}
-		else {
-			dc.MoveTo(acPosPix.x, acPosPix.y);
-			dc.LineTo(acPosPix.x - 4, acPosPix.y - 4);
-			dc.MoveTo(acPosPix.x, acPosPix.y);
-			dc.LineTo(acPosPix.x + 4, acPosPix.y - 4);
-			dc.MoveTo(acPosPix.x, acPosPix.y);
-			dc.LineTo(acPosPix.x - 4, acPosPix.y + 4);
-			dc.MoveTo(acPosPix.x, acPosPix.y);
-			dc.LineTo(acPosPix.x + 4, acPosPix.y + 4);
+		// Correlation cross
+
+		if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
+			dc.MoveTo({ acPosPix.x, acPosPix.y + 1 });
+			dc.LineTo({ acPosPix.x + 1, acPosPix.y });
+			dc.LineTo({ acPosPix.x, acPosPix.y - 1 });
+			dc.LineTo({ acPosPix.x - 1, acPosPix.y });
+			dc.LineTo({ acPosPix.x, acPosPix.y + 1 });
+		} else {
+			if (RtPos.GetTransponderC()) {
+				dc.MoveTo({ acPosPix.x, acPosPix.y - 6 });
+				dc.LineTo({ acPosPix.x - 6, acPosPix.y });
+				dc.LineTo({ acPosPix.x, acPosPix.y + 6 });
+				dc.LineTo({ acPosPix.x + 6, acPosPix.y });
+				dc.LineTo({ acPosPix.x, acPosPix.y - 6 });
+			}
+			else {
+				dc.MoveTo(acPosPix.x, acPosPix.y);
+				dc.LineTo(acPosPix.x - 4, acPosPix.y - 4);
+				dc.MoveTo(acPosPix.x, acPosPix.y);
+				dc.LineTo(acPosPix.x + 4, acPosPix.y - 4);
+				dc.MoveTo(acPosPix.x, acPosPix.y);
+				dc.LineTo(acPosPix.x - 4, acPosPix.y + 4);
+				dc.MoveTo(acPosPix.x, acPosPix.y);
+				dc.LineTo(acPosPix.x + 4, acPosPix.y + 4);
+			}
 		}
 
 		// Predicted Track Line
@@ -2075,28 +2108,8 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 		if (std::find(ReleasedTracks.begin(), ReleasedTracks.end(), rt.GetSystemID()) != ReleasedTracks.end())
 			isAcDisplayed = false;
 
-		if (CurrentConfig->isGeofenceCorrelationAreaAvail(getActiveAirport())) {
-			const Value& correlationAreas = CurrentConfig->getAirportMapIfAny(getActiveAirport())["georeference_correlation_areas"];
-			if (correlationAreas.IsArray()) {
-				for (int i = 0; i < correlationAreas.Size(); i++) {
-					std::vector<CPosition> polygon;
-					if (correlationAreas[i].IsArray()) {
-						for (int j = 0; j < correlationAreas[i].Size(); j++) {
-							const Value& pointArray = correlationAreas[i][j];
-							CPosition point;
-							int zero = 0;
-							point.LoadFromStrings(pointArray[1].GetString(), pointArray[zero].GetString());  // !!
-							polygon.push_back(point);
-						}
-					}
-
-					if (IsPointInPolygon(RtPos.GetPosition(), polygon)) {
-						isAcDisplayed = false;
-						break;
-					}
-				}
-			}
-		}
+		if (CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition()))
+			isAcDisplayed = false;
 
 		// 
 

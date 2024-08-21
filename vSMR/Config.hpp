@@ -26,6 +26,7 @@ public:
 	bool isAirportMapAvail(string airport);
 	bool isCustomRunwayAvail(string airport, string name1, string name2);
 	bool isGeofenceCorrelationAreaAvail(string airport);
+	bool isPositionInGeofenceArea(string airport, CPosition position);
 	bool isCustomCursorUsed();
 
 	Gdiplus::Color getConfigColor(const Value& config_path);

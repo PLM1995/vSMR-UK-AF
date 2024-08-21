@@ -317,7 +317,7 @@ public:
 
 	// IsPointInPolygon
 
-	inline virtual bool IsPointInPolygon(const CPosition& point, const std::vector<CPosition>& polygon) {
+	static bool IsPointInPolygon(const CPosition& point, const std::vector<CPosition>& polygon) {
 		int n = polygon.size();
 		bool inside = false;
 

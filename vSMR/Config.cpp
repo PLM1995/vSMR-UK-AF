@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Config.hpp"
 #include <algorithm>
+#include "SMRRadar.hpp"
 
 CConfig::CConfig(string configPath)
 {
@@ -171,6 +172,32 @@ bool CConfig::isGeofenceCorrelationAreaAvail(string airport) {
 			}
 		}
 	}
+	return false;
+}
+
+bool CConfig::isPositionInGeofenceArea(string airport, CPosition position) {
+	if (isGeofenceCorrelationAreaAvail(airport)) {
+		const Value& correlationAreas = getAirportMapIfAny(airport)["georeference_correlation_areas"];
+		if (correlationAreas.IsArray()) {
+			for (int i = 0; i < correlationAreas.Size(); i++) {
+				std::vector<CPosition> polygon;
+				if (correlationAreas[i].IsArray()) {
+					for (int j = 0; j < correlationAreas[i].Size(); j++) {
+						const Value& pointArray = correlationAreas[i][j];
+						CPosition point;
+						int zero = 0;
+						point.LoadFromStrings(pointArray[1].GetString(), pointArray[zero].GetString());
+						polygon.push_back(point);
+					}
+				}
+
+				if (CSMRRadar::IsPointInPolygon(position, polygon)) {
+					return true;
+				}
+			}
+		}
+	}
+
 	return false;
 }
 
