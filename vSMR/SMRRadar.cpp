@@ -1099,7 +1099,7 @@ void CSMRRadar::OnRadarTargetPositionUpdate(CRadarTarget RadarTarget)
 
 	CFlightPlan fp = GetPlugIn()->FlightPlanSelect(RadarTarget.GetCallsign());
 
-	if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {  // If on stand at Heathrow
+	if ((getActiveAirport() == "EGLL" || getActiveAirport() == "EGKK") && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {  // If on stand at Heathrow
 		int c = 0;
 		CPosition centre = RtPos.GetPosition();
 
@@ -1976,7 +1976,7 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 				lpPoints[i] = { REAL(ConvertCoordFromPositionToPixel(pos).x), REAL(ConvertCoordFromPositionToPixel(pos).y) };
 			}
 
-			if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
+			if ((getActiveAirport() == "EGLL" || getActiveAirport() == "EGKK") && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
 				SolidBrush H_Brush(ColorManager->get_corrected_color("afterglow", Gdiplus::Color::White));
 				graphics.FillPolygon(&H_Brush, lpPoints, Patatoides[rt.GetCallsign()].points.size());
 
@@ -2000,7 +2000,7 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 
 		// Correlation cross
 
-		if (getActiveAirport() == "EGLL" && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
+		if ((getActiveAirport() == "EGLL" || getActiveAirport() == "EGKK") && CurrentConfig->isPositionInGeofenceArea(getActiveAirport(), RtPos.GetPosition())) {
 			dc.MoveTo({ acPosPix.x, acPosPix.y + 1 });
 			dc.LineTo({ acPosPix.x + 1, acPosPix.y });
 			dc.LineTo({ acPosPix.x, acPosPix.y - 1 });
