@@ -52,6 +52,7 @@ string tdest;
 string ttype;
 
 int messageId = 0;
+int pdcNum = 1;
 
 clock_t timer;
 
@@ -65,6 +66,12 @@ using namespace SMRPluginSharedData;
 char recv_buf[1024];
 
 vector<CSMRRadar*> RadarScreensOpened;
+
+string padToTwo(int num) {
+	ostringstream ss;
+	ss << setw(2) << setfill('0') << num;
+	return ss.str();
+}
 
 void datalinkLogin(void * arg) {
 	string raw;
@@ -86,7 +93,6 @@ void datalinkLogin(void * arg) {
 };
 
 void sendDatalinkMessage(void * arg) {
-
 	string raw;
 	string url = baseUrlDatalink;
 	url += "?logon=";
@@ -118,6 +124,75 @@ void sendDatalinkMessage(void * arg) {
 	}
 };
 
+void sendDatalinkProcessingMessage(void* arg) {
+	string raw;
+	string url = baseUrlDatalink;
+	url += "?logon=";
+	url += logonCode;
+	url += "&from=";
+	url += logonCallsign;
+	url += "&to=";
+	url += tdest;
+	url += "&type=cpdlc";
+	url += "&packet=/data2/";
+	url += std::to_string(++messageId);
+	url += "//NE/FSM ";
+
+	time_t now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+	struct tm* parts = localtime(&now);
+	url += padToTwo(parts->tm_hour) + padToTwo(parts->tm_min) + " ";
+	url += to_string(parts->tm_year).substr(1) + padToTwo(parts->tm_mon) + padToTwo(parts->tm_mday) + " ";
+
+	url += logonCallsign + " ";
+	url += tdest + " ";
+
+	url += "RCD RECEIVED @REQUEST BEING PROCESSED @STANDBY";
+
+	size_t start_pos = 0;
+	while ((start_pos = url.find(" ", start_pos)) != std::string::npos) {
+		url.replace(start_pos, string(" ").length(), "%20");
+		start_pos += string("%20").length();
+	}
+
+	Logger::info("REALLY REALLY Sending RCD RECEIVED message");
+
+	raw.assign(httpHelper->downloadStringFromURL(url));
+	Logger::info(raw);
+};
+
+void sendDatalinkConfirmMessage(void* arg) {
+	string raw;
+	string url = baseUrlDatalink;
+	url += "?logon=";
+	url += logonCode;
+	url += "&from=";
+	url += logonCallsign;
+	url += "&to=";
+	url += tdest;
+	url += "&type=cpdlc";
+	url += "&packet=/data2/";
+	url += std::to_string(++messageId);
+	url += "//NE/CDA ";
+
+	time_t now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+	struct tm* parts = localtime(&now);
+	url += padToTwo(parts->tm_hour) + padToTwo(parts->tm_min) + " ";
+	url += to_string(parts->tm_year).substr(1) + padToTwo(parts->tm_mon) + padToTwo(parts->tm_mday) + " ";
+
+	url += logonCallsign + " ";
+	url += "PDC " + to_string(pdcNum++) + " ";
+	url += "CDA RECEIVED @CLEARANCE CONFIRMED";
+
+	size_t start_pos = 0;
+	while ((start_pos = url.find(" ", start_pos)) != std::string::npos) {
+		url.replace(start_pos, string(" ").length(), "%20");
+		start_pos += string("%20").length();
+	}
+
+	raw.assign(httpHelper->downloadStringFromURL(url));
+	Logger::info(raw);
+};
+
 void pollMessages(void * arg) {
 	string raw = "";
 	string url = baseUrlDatalink;
@@ -137,6 +212,8 @@ void pollMessages(void * arg) {
 	string delimiter = "}} ";
 	size_t pos = 0;
 	std::string token;
+	Logger::info("HERE");
+	Logger::info(raw);
 	while ((pos = raw.find(delimiter)) != std::string::npos) {
 		token = raw.substr(1, pos);
 
@@ -163,20 +240,29 @@ void pollMessages(void * arg) {
 				if (message.message.find("LOGON") != std::string::npos) {
 					tmessage = "UNABLE";
 					ttype = "CPDLC";
-					tdest = DatalinkToSend.callsign;
+					tdest = message.from;
 					_beginthread(sendDatalinkMessage, 0, NULL);
 				} else {
+
 					if (PlaySoundClr) {
 						AFX_MANAGE_STATE(AfxGetStaticModuleState());
 						PlaySound(MAKEINTRESOURCE(IDR_WAVE1), AfxGetInstanceHandle(), SND_RESOURCE | SND_ASYNC);
 					}
 					AircraftDemandingClearance.push_back(message.from);
+				
+					tdest = message.from;
+					_beginthread(sendDatalinkProcessingMessage, 0, NULL);
 				}
 			}
 			else if (message.message.find("WILCO") != std::string::npos || message.message.find("ROGER") != std::string::npos || message.message.find("RGR") != std::string::npos) {
 				if (std::find(AircraftMessageSent.begin(), AircraftMessageSent.end(), message.from) != AircraftMessageSent.end()) {
 					AircraftWilco.push_back(message.from);
 				}
+
+				Logger::info("POTATO Sending RCD RECEIVED message");
+
+				tdest = message.from;
+				_beginthread(sendDatalinkConfirmMessage, 0, NULL);
 			}
 			else if (message.message.length() != 0 ){
 				AircraftMessage.push_back(message.from);
@@ -200,19 +286,28 @@ void sendDatalinkClearance(void * arg) {
 	url += "&to=";
 	url += DatalinkToSend.callsign;
 	url += "&type=CPDLC&packet=/data2/";
-	messageId++;
-	url += std::to_string(messageId);
-	url += "//R/";
-	url += "CLR TO @";
+	url += std::to_string(++messageId);
+	url += "//WU/CLD ";
+	
+	time_t now = chrono::system_clock::to_time_t(chrono::system_clock::now());
+	struct tm *parts = localtime(&now);
+	url += padToTwo(parts->tm_hour) + padToTwo(parts->tm_min) + " ";
+	url += to_string(parts->tm_year).substr(1) + padToTwo(parts->tm_mon) + padToTwo(parts->tm_mday) + " ";
+	
+	url += logonCallsign + " ";
+	url += "PDC " + to_string(pdcNum++) + " ";
+	url += DatalinkToSend.callsign + " ";
+	url += "CLRD TO @";
 	url += DatalinkToSend.destination;
-	url += "@ RWY @";
+	url += "@ OFF @";
 	url += DatalinkToSend.rwy;
-	url += "@ DEP @";
+	url += "@ VIA @";
 	url += DatalinkToSend.sid;
-	url += "@ INIT CLB @";
+	url += "@ CLIMB @";
 	url += DatalinkToSend.climb;
 	url += "@ SQUAWK @";
 	url += DatalinkToSend.squawk;
+	url += "@ ATIS @";
 	url += "@ ";
 	if (DatalinkToSend.ctot != "no" && DatalinkToSend.ctot.size() > 3) {
 		url += "CTOT @";
@@ -225,12 +320,12 @@ void sendDatalinkClearance(void * arg) {
 		url += "@ ";
 	}
 	if (DatalinkToSend.freq != "no" && DatalinkToSend.freq.size() > 5) {
-		url += "WHEN RDY CALL FREQ @";
+		url += "REPORT READY ON @";
 		url += DatalinkToSend.freq;
 		url += "@";
 	}
 	else {
-		url += "WHEN RDY CALL @";
+		url += "REPORT READY ON @";
 		url += myfrequency;
 		url += "@";
 	}
@@ -322,7 +417,7 @@ CSMRPlugin::~CSMRPlugin()
 bool CSMRPlugin::OnCompileCommand(const char * sCommandLine) {
 	if (startsWith(".smr connect", sCommandLine))
 	{
-		if (ControllerMyself().IsController()) {
+		if (ControllerMyself().IsController() || true) {  // TODO: OBVIOUSLY REMOVE BEFORE PROD
 			if (!HoppieConnected) {
 				_beginthread(datalinkLogin, 0, NULL);
 			}
@@ -622,7 +717,7 @@ void CSMRPlugin::OnTimer(int Counter)
 		FailedToConnectMessage = false;
 	}
 
-	if (HoppieConnected && GetConnectionType() == CONNECTION_TYPE_NO) {
+	if (HoppieConnected && GetConnectionType() == CONNECTION_TYPE_NO && !true) {  // REMOVE BEFORE PROD
 		DisplayUserMessage("CPDLC", "Server", "Automatically logged off!", true, true, false, true, false);
 		HoppieConnected = false;
 	}
