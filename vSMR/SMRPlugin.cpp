@@ -173,7 +173,7 @@ void pollMessages(void * arg) {
 					AircraftDemandingClearance.push_back(message.from);
 				}
 			}
-			else if (message.message.find("WILCO") != std::string::npos || message.message.find("ROGER") != std::string::npos || message.message.find("RGR") != std::string::npos) {
+			else if (message.message.find("WILCO") != std::string::npos || message.message.find("ROGER") != std::string::npos || message.message.find("RGR") != std::string::npos || message.message.find("ACCEPT") != std::string::npos) {
 				if (std::find(AircraftMessageSent.begin(), AircraftMessageSent.end(), message.from) != AircraftMessageSent.end()) {
 					AircraftWilco.push_back(message.from);
 				}
