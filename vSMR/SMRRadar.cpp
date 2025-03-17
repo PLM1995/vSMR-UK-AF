@@ -649,6 +649,7 @@ void CSMRRadar::OnClickScreenObject(int ObjectType, const char * sObjectId, POIN
 			GetPlugIn()->AddPopupListElement("QDR Select Reference", "", RIMCAS_QDM_SELECT_TOGGLE);
 			GetPlugIn()->AddPopupListElement("SRW 1", "", APPWINDOW_ONE, false, int(appWindowDisplays[1]));
 			GetPlugIn()->AddPopupListElement("SRW 2", "", APPWINDOW_TWO, false, int(appWindowDisplays[2]));
+			GetPlugIn()->AddPopupListElement("WIP Areas", "", WIP_AREAS, false, int(wipAreasActive));
 			GetPlugIn()->AddPopupListElement("Profiles", "", RIMCAS_OPEN_LIST);
 			GetPlugIn()->AddPopupListElement("Close", "", RIMCAS_CLOSE, false, 2, false, true);
 		}
@@ -908,6 +909,10 @@ void CSMRRadar::OnFunctionCall(int FunctionId, const char * sItemString, POINT P
 	if (FunctionId == APPWINDOW_ONE || FunctionId == APPWINDOW_TWO) {
 		int id = FunctionId - APPWINDOW_BASE;
 		appWindowDisplays[id] = !appWindowDisplays[id];
+	}
+
+	if (FunctionId == WIP_AREAS) {
+		wipAreasActive = !wipAreasActive;
 	}
 
 	if (FunctionId == RIMCAS_ACTIVE_AIRPORT_FUNC) {
@@ -1892,23 +1897,25 @@ void CSMRRadar::OnRefresh(HDC hDC, int Phase)
 
 	Logger::info("WIP Areas");
 
-	CPen RedPen(PS_SOLID, 2, RGB(150, 0, 0));
-	CPen* oldPen = dc.SelectObject(&RedPen);
+	if (wipAreasActive) {
+		CPen RedPen(PS_SOLID, 2, RGB(150, 0, 0));
+		CPen* oldPen = dc.SelectObject(&RedPen);
 
-	for (vector<CPosition> wipArea : wipAreas) {
-		PointF lpPoints[5000];
-		int w = 0;
-		for (auto& Point : wipArea) {
-			POINT toDraw = ConvertCoordFromPositionToPixel(Point);
+		for (vector<CPosition> wipArea : wipAreas) {
+			PointF lpPoints[5000];
+			int w = 0;
+			for (auto& Point : wipArea) {
+				POINT toDraw = ConvertCoordFromPositionToPixel(Point);
 
-			lpPoints[w] = { REAL(toDraw.x), REAL(toDraw.y) };
-			w++;
+				lpPoints[w] = { REAL(toDraw.x), REAL(toDraw.y) };
+				w++;
+			}
+
+			graphics.FillPolygon(&SolidBrush(Color(150, 0, 0)), lpPoints, w);
 		}
 
-		graphics.FillPolygon(&SolidBrush(Color(150, 0, 0)), lpPoints, w);
+		dc.SelectObject(oldPen);
 	}
-
-	dc.SelectObject(oldPen);
 
 
 #pragma region symbols

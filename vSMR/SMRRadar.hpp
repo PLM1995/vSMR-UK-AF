@@ -91,6 +91,7 @@ public:
 	map<string, RECT> ListAreas;
 
 	map<int, bool> appWindowDisplays;
+	bool wipAreasActive = true;
 
 	map<string, CRect> tagAreas;
 	map<string, double> TagAngles;
