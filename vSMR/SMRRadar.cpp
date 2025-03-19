@@ -120,7 +120,7 @@ CSMRRadar::CSMRRadar()
 
 	Logger::info("Loading WIP areas");
 	string raw;
-	string url = "https://raw.githubusercontent.com/VATSIM-UK/uk-controller-pack/699ec890d5d6cb7def4b6dbc9ff35a00dc75d43f/.data/vSMR_WIP_areas.txt";
+	string url = "https://raw.githubusercontent.com/VATSIM-UK/uk-controller-pack/refs/heads/main/.data/vSMR_WIP_areas.txt";
 	HttpHelper* httpHelper = new HttpHelper();
 	raw.assign(httpHelper->downloadStringFromURL(url));
 
