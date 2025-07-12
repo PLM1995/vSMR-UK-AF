@@ -1,0 +1,35 @@
+name: Build DLL
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild Path
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce
+
+      - name: Build DLL
+        run: msbuild vSMR.sln /p:Configuration=Release /p:Platform='win32'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vSMR.dll
+          path: Release/vSMR.dll
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            Release/vSMR.dll
